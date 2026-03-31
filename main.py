@@ -168,18 +168,21 @@ def ask_claude(chat_id, user_text):
         return f"Мария временно недоступна... (Ошибка: {str(e)})"
 
 def send_daily_tips():
+    import random
+    # Ждём случайное время от 12 до 48 часов перед первой отправкой
+    first_delay = random.randint(12 * 3600, 48 * 3600)
+    time.sleep(first_delay)
+
     while True:
-        now = datetime.now()
-        if now.hour == 10 and now.minute == 0:
-            tip_index = now.day % len(DAILY_TIPS)
-            tip = DAILY_TIPS[tip_index]
-            for chat_id in list(all_users):
-                try:
-                    send_message(chat_id, f"💡 <b>Совет дня от Марии:</b>\n\n{tip}")
-                except:
-                    pass
-            time.sleep(60)
-        time.sleep(30)
+        tip = random.choice(DAILY_TIPS)
+        for chat_id in list(all_users):
+            try:
+                send_message(chat_id, f"💡 <b>Совет от Марии:</b>\n\n{tip}")
+            except:
+                pass
+        # Ждём случайное время от 36 до 60 часов (~раз в 2 дня)
+        delay = random.randint(36 * 3600, 60 * 3600)
+        time.sleep(delay)
 
 def handle_start(chat_id):
     all_users.add(chat_id)
