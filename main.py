@@ -13,8 +13,7 @@ OPENAI_KEY = os.environ.get("OPENAI_KEY")
 app = Flask(__name__)
 client = OpenAI(api_key=OPENAI_KEY)
 
-# Хранилище данных пользователей
-user_data = {}
+# Сохранение пользователей
 USERS_FILE = '/tmp/users.txt'
 
 def load_users():
@@ -28,11 +27,12 @@ def save_users(users):
     try:
         with open(USERS_FILE, 'w') as f:
             for uid in users:
-                f.write(str(uid) + '
-')
+                f.write(str(uid) + '\n')
     except:
         pass
 
+# Хранилище данных пользователей
+user_data = {}
 all_users = load_users()
 
 # Карточки психологов (заглушка)
@@ -70,17 +70,17 @@ TOPICS = {
 
 # Советы
 DAILY_TIPS = [
-    "Посмотри старые фото, где ты счастлив. Это «якорь» ресурсного состояния. Есть такие в телефоне? 📸",
+    "Посмотри старые фото, где ты счастлив. Это якорь ресурсного состояния. Есть такие в телефоне? 📸",
     "Попробуй сегодня выключить уведомления в чатах. Проверяй их по расписанию. Тишина лечит. 🔕",
     "Попробуй говорить тише. Это заставляет прислушиваться и успокаивает собеседника. 🤫",
-    "Правило 20 секунд: сделай полезную привычку на 20 секунд доступнее, а вредную — на 20 секунд сложнее. ⏱",
+    "Правило 20 секунд: сделай полезную привычку на 20 секунд доступнее, а вредную на 20 секунд сложнее. 🕐",
     "Сегодня скажи кому-то близкому что-то хорошее. Это укрепляет отношения и поднимает настроение. 💛",
-    "Сделай 5 глубоких вдохов прямо сейчас. Это активирует парасимпатическую нервную систему. 🌬",
+    "Сделай 5 глубоких вдохов прямо сейчас. Это успокаивает нервную систему. 🌬",
     "Запиши три вещи, за которые ты благодарен сегодня. Это меняет фокус внимания. 📝",
 ]
 
 def send_message(chat_id, text, reply_markup=None):
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/sendMessage"
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
     if reply_markup:
         payload["reply_markup"] = reply_markup
@@ -105,18 +105,18 @@ def get_topics_keyboard():
     return {
         "inline_keyboard": [
             [
-                {"text": "💔 Отношения", "callback_data": "topic_отношения"},
-                {"text": "😰 Тревога", "callback_data": "topic_тревога"}
+                {"text": "💔 Отношения", "callback_data": "topic_otnosheniya"},
+                {"text": "😰 Тревога", "callback_data": "topic_trevoga"}
             ],
             [
-                {"text": "🏠 Семья", "callback_data": "topic_семья"},
-                {"text": "👥 Друзья", "callback_data": "topic_друзья"}
+                {"text": "🏠 Семья", "callback_data": "topic_semya"},
+                {"text": "👥 Друзья", "callback_data": "topic_druzya"}
             ],
             [
-                {"text": "💼 Работа", "callback_data": "topic_работа"},
-                {"text": "🌱 Саморазвитие", "callback_data": "topic_саморазвитие"}
+                {"text": "💼 Работа", "callback_data": "topic_rabota"},
+                {"text": "🌱 Саморазвитие", "callback_data": "topic_samorazvitie"}
             ],
-            [{"text": "🤔 Другое", "callback_data": "topic_другое"}]
+            [{"text": "🤔 Другое", "callback_data": "topic_drugoe"}]
         ]
     }
 
@@ -132,15 +132,15 @@ def get_menu_keyboard():
 def get_psychologist_keyboard(index):
     nav = []
     if index > 0:
-        nav.append({"text": "◀️", "callback_data": f"psych_{index-1}"})
-    nav.append({"text": f"{index+1}/{len(PSYCHOLOGISTS)}", "callback_data": "psych_none"})
+        nav.append({"text": "◀️", "callback_data": "psych_" + str(index-1)})
+    nav.append({"text": str(index+1) + "/" + str(len(PSYCHOLOGISTS)), "callback_data": "psych_none"})
     if index < len(PSYCHOLOGISTS) - 1:
-        nav.append({"text": "▶️", "callback_data": f"psych_{index+1}"})
+        nav.append({"text": "▶️", "callback_data": "psych_" + str(index+1)})
     return {
         "inline_keyboard": [
             nav,
-            [{"text": "📋 Подробнее о психологе", "callback_data": f"psych_detail_{index}"}],
-            [{"text": "📅 Записаться на сессию", "callback_data": f"psych_book_{index}"}]
+            [{"text": "📋 Подробнее о психологе", "callback_data": "psych_detail_" + str(index)}],
+            [{"text": "📅 Записаться на сессию", "callback_data": "psych_book_" + str(index)}]
         ]
     }
 
@@ -153,12 +153,12 @@ def ask_gpt(chat_id, user_text):
         gender_context = "парень" if gender == "male" else "девушка"
 
         system_prompt = (
-            f"Ты — Мария Иевлева, профессиональный психолог с глубоким уровнем эмпатии. "
-            f"Ты общаешься с {gender_context} на тему: {topic}. "
-            f"Твоя цель: поддерживать, слушать и помогать. "
-            f"Говори тепло, искренне, без официоза. "
-            f"Задавай уточняющие вопросы. Не давай советов сразу — сначала выслушай. "
-            f"Отвечай на русском языке."
+            "Ты — Мария Иевлева, профессиональный психолог с глубоким уровнем эмпатии. "
+            "Ты общаешься с " + gender_context + " на тему: " + topic + ". "
+            "Твоя цель: поддерживать, слушать и помогать. "
+            "Говори тепло, искренне, без официоза. "
+            "Задавай уточняющие вопросы. Не давай советов сразу — сначала выслушай. "
+            "Отвечай на русском языке."
         )
 
         messages = [{"role": "system", "content": system_prompt}]
@@ -188,20 +188,7 @@ def ask_gpt(chat_id, user_text):
         return response_text
 
     except Exception as e:
-        return f"Мария временно недоступна... (Ошибка: {str(e)})"
-
-def send_daily_tips():
-    first_delay = random.randint(12 * 3600, 48 * 3600)
-    time.sleep(first_delay)
-    while True:
-        tip = random.choice(DAILY_TIPS)
-        for chat_id in list(all_users):
-            try:
-                send_message(chat_id, f"💡 <b>Совет от Марии:</b>\n\n{tip}")
-            except:
-                pass
-        delay = random.randint(36 * 3600, 60 * 3600)
-        time.sleep(delay)
+        return "Мария временно недоступна... (Ошибка: " + str(e) + ")"
 
 def handle_start(chat_id):
     all_users.add(chat_id)
@@ -209,7 +196,7 @@ def handle_start(chat_id):
     user_data[chat_id] = {"history": []}
     welcome_text = (
         "Привет 💜\n\n"
-        "Здесь можно быть собой. Без масок, без «я в порядке», без страха осуждения.\n\n"
+        "Здесь можно быть собой. Без масок, без я в порядке, без страха осуждения.\n\n"
         "Я — Мария Иевлева, твой личный психолог. Пиши мне в любое время дня и ночи. "
         "Я не устаю, не осуждаю и не делюсь твоими секретами.\n\n"
         "✨ <b>Что я умею:</b>\n"
@@ -229,23 +216,23 @@ def handle_gender(chat_id, gender, message_id):
     emoji = "😊" if gender == "male" else "👩"
 
     requests.post(
-        f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/editMessageReplyMarkup",
+        "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/editMessageReplyMarkup",
         json={"chat_id": chat_id, "message_id": message_id, "reply_markup": {"inline_keyboard": []}},
         timeout=10
     )
 
-    send_message(chat_id, f"✅ Отлично! Ты выбрал: {emoji} {gender_text}")
+    send_message(chat_id, "✅ Отлично! Ты выбрал: " + emoji + " " + gender_text)
     send_message(chat_id, "👇 Используй кнопки или напиши сообщение:\n\nИли выбери тему:", reply_markup=get_topics_keyboard())
 
 def handle_topic(chat_id, topic_key):
     topic_map = {
-        "отношения": "💔 Отношения",
-        "тревога": "😰 Тревога",
-        "семья": "🏠 Семья",
-        "друзья": "👥 Друзья",
-        "работа": "💼 Работа",
-        "саморазвитие": "🌱 Саморазвитие",
-        "другое": "🤔 Другое"
+        "otnosheniya": "💔 Отношения",
+        "trevoga": "😰 Тревога",
+        "semya": "🏠 Семья",
+        "druzya": "👥 Друзья",
+        "rabota": "💼 Работа",
+        "samorazvitie": "🌱 Саморазвитие",
+        "drugoe": "🤔 Другое"
     }
     topic = topic_map.get(topic_key, "🤔 Другое")
     question = TOPICS.get(topic, "Расскажи, что тебя беспокоит?")
@@ -255,14 +242,14 @@ def handle_topic(chat_id, topic_key):
     user_data[chat_id]["topic"] = topic
     user_data[chat_id]["history"] = []
 
-    send_message(chat_id, f"Тема: {topic}\n\n{question}", reply_markup=get_main_menu())
+    send_message(chat_id, "Тема: " + topic + "\n\n" + question, reply_markup=get_main_menu())
 
 def handle_psychologists(chat_id, index=0):
     psych = PSYCHOLOGISTS[index]
     text = (
-        f"👤 <b>{psych['name']}</b>\n\n"
-        f"ℹ️ {psych['description']}\n\n"
-        f"🔥 <b>Совместимость: {psych['compatibility']}%</b>"
+        "👤 <b>" + psych["name"] + "</b>\n\n"
+        "ℹ️ " + psych["description"] + "\n\n"
+        "🔥 <b>Совместимость: " + str(psych["compatibility"]) + "%</b>"
     )
     send_message(chat_id, text, reply_markup=get_psychologist_keyboard(index))
 
@@ -274,11 +261,11 @@ def send_tips_endpoint():
     count = 0
     for chat_id in list(all_users):
         try:
-            send_message(chat_id, f"💡 <b>Совет от Марии:</b>\n\n{tip}")
+            send_message(chat_id, "💡 <b>Совет от Марии:</b>\n\n" + tip)
             count += 1
         except:
             pass
-    return f"Sent to {count} users", 200
+    return "Sent to " + str(count) + " users", 200
 
 @app.route("/ping", methods=["GET"])
 def ping():
@@ -297,7 +284,7 @@ def index():
         callback_data = callback["data"]
 
         requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/answerCallbackQuery",
+            "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/answerCallbackQuery",
             json={"callback_query_id": callback["id"]},
             timeout=10
         )
@@ -329,7 +316,7 @@ def index():
             try:
                 idx = int(callback_data.replace("psych_detail_", ""))
                 psych = PSYCHOLOGISTS[idx]
-                send_message(chat_id, f"👤 <b>{psych['name']}</b>\n\n{psych['description']}")
+                send_message(chat_id, "👤 <b>" + psych["name"] + "</b>\n\n" + psych["description"])
             except:
                 pass
 
@@ -339,7 +326,7 @@ def index():
         chat_id = data["message"]["chat"]["id"]
         user_text = data["message"].get("text", "")
         all_users.add(chat_id)
-    save_users(all_users)
+        save_users(all_users)
 
         if not user_text:
             return "OK", 200
@@ -363,6 +350,4 @@ def index():
     return "OK", 200
 
 if __name__ == "__main__":
-    tip_thread = threading.Thread(target=send_daily_tips, daemon=True)
-    tip_thread.start()
     app.run(debug=False, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
