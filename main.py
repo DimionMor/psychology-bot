@@ -1,20 +1,17 @@
 import os
 import requests
-import anthropic
+import random
+from openai import OpenAI
 from flask import Flask, request
-from datetime import datetime
 import threading
 import time
 
 # === НАСТРОЙКИ ===
 TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN")
-CLAUDE_KEY = os.environ.get("CLAUDE_KEY")
+OPENAI_KEY = os.environ.get("OPENAI_KEY")
 
 app = Flask(__name__)
-client = anthropic.Anthropic(
-    api_key=CLAUDE_KEY,
-    timeout=60.0
-)
+client = OpenAI(api_key=OPENAI_KEY)
 
 # Хранилище данных пользователей
 user_data = {}
@@ -53,7 +50,7 @@ TOPICS = {
     "🤔 Другое": "Расскажи, что тебя беспокоит?"
 }
 
-# Ежедневные советы
+# Советы
 DAILY_TIPS = [
     "Посмотри старые фото, где ты счастлив. Это «якорь» ресурсного состояния. Есть такие в телефоне? 📸",
     "Попробуй сегодня выключить уведомления в чатах. Проверяй их по расписанию. Тишина лечит. 🔕",
@@ -129,7 +126,7 @@ def get_psychologist_keyboard(index):
         ]
     }
 
-def ask_claude(chat_id, user_text):
+def ask_gpt(chat_id, user_text):
     try:
         user = user_data.get(chat_id, {})
         gender = user.get("gender", "не указан")
@@ -137,26 +134,34 @@ def ask_claude(chat_id, user_text):
         history = user.get("history", [])
         gender_context = "парень" if gender == "male" else "девушка"
 
-        history.append({"role": "user", "content": user_text})
-        if len(history) > 20:
-            history = history[-20:]
-
-        message = client.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=1024,
-            system=(
-                f"Ты — Мария Иевлева, профессиональный психолог с глубоким уровнем эмпатии. "
-                f"Ты общаешься с {gender_context} на тему: {topic}. "
-                f"Твоя цель: поддерживать, слушать и помогать. "
-                f"Говори тепло, искренне, без официоза. "
-                f"Задавай уточняющие вопросы. Не давай советов сразу — сначала выслушай. "
-                f"Отвечай на русском языке."
-            ),
-            messages=history
+        system_prompt = (
+            f"Ты — Мария Иевлева, профессиональный психолог с глубоким уровнем эмпатии. "
+            f"Ты общаешься с {gender_context} на тему: {topic}. "
+            f"Твоя цель: поддерживать, слушать и помогать. "
+            f"Говори тепло, искренне, без официоза. "
+            f"Задавай уточняющие вопросы. Не давай советов сразу — сначала выслушай. "
+            f"Отвечай на русском языке."
         )
 
-        response_text = message.content[0].text
+        messages = [{"role": "system", "content": system_prompt}]
+        messages += history
+        messages.append({"role": "user", "content": user_text})
+
+        if len(messages) > 22:
+            messages = [messages[0]] + messages[-20:]
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            max_tokens=1024
+        )
+
+        response_text = response.choices[0].message.content
+
+        history.append({"role": "user", "content": user_text})
         history.append({"role": "assistant", "content": response_text})
+        if len(history) > 20:
+            history = history[-20:]
 
         if chat_id not in user_data:
             user_data[chat_id] = {}
@@ -168,11 +173,8 @@ def ask_claude(chat_id, user_text):
         return f"Мария временно недоступна... (Ошибка: {str(e)})"
 
 def send_daily_tips():
-    import random
-    # Ждём случайное время от 12 до 48 часов перед первой отправкой
     first_delay = random.randint(12 * 3600, 48 * 3600)
     time.sleep(first_delay)
-
     while True:
         tip = random.choice(DAILY_TIPS)
         for chat_id in list(all_users):
@@ -180,7 +182,6 @@ def send_daily_tips():
                 send_message(chat_id, f"💡 <b>Совет от Марии:</b>\n\n{tip}")
             except:
                 pass
-        # Ждём случайное время от 36 до 60 часов (~раз в 2 дня)
         delay = random.randint(36 * 3600, 60 * 3600)
         time.sleep(delay)
 
@@ -282,14 +283,14 @@ def index():
                 pass
         elif callback_data.startswith("psych_book_"):
             try:
-                index = int(callback_data.replace("psych_book_", ""))
-                send_message(chat_id, PSYCHOLOGISTS[index]["contact"])
+                idx = int(callback_data.replace("psych_book_", ""))
+                send_message(chat_id, PSYCHOLOGISTS[idx]["contact"])
             except:
                 pass
         elif callback_data.startswith("psych_detail_"):
             try:
-                index = int(callback_data.replace("psych_detail_", ""))
-                psych = PSYCHOLOGISTS[index]
+                idx = int(callback_data.replace("psych_detail_", ""))
+                psych = PSYCHOLOGISTS[idx]
                 send_message(chat_id, f"👤 <b>{psych['name']}</b>\n\n{psych['description']}")
             except:
                 pass
@@ -317,7 +318,7 @@ def index():
             if not user_data[chat_id].get("topic"):
                 send_message(chat_id, "Выбери тему для разговора:", reply_markup=get_topics_keyboard())
                 return "OK", 200
-            answer = ask_claude(chat_id, user_text)
+            answer = ask_gpt(chat_id, user_text)
             send_message(chat_id, answer)
 
     return "OK", 200
