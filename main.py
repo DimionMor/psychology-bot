@@ -15,7 +15,25 @@ client = OpenAI(api_key=OPENAI_KEY)
 
 # Хранилище данных пользователей
 user_data = {}
-all_users = set()
+USERS_FILE = '/tmp/users.txt'
+
+def load_users():
+    try:
+        with open(USERS_FILE, 'r') as f:
+            return set(int(x.strip()) for x in f.readlines() if x.strip())
+    except:
+        return set()
+
+def save_users(users):
+    try:
+        with open(USERS_FILE, 'w') as f:
+            for uid in users:
+                f.write(str(uid) + '
+')
+    except:
+        pass
+
+all_users = load_users()
 
 # Карточки психологов (заглушка)
 PSYCHOLOGISTS = [
@@ -187,6 +205,7 @@ def send_daily_tips():
 
 def handle_start(chat_id):
     all_users.add(chat_id)
+    save_users(all_users)
     user_data[chat_id] = {"history": []}
     welcome_text = (
         "Привет 💜\n\n"
@@ -205,6 +224,7 @@ def handle_start(chat_id):
 def handle_gender(chat_id, gender, message_id):
     user_data[chat_id] = {"gender": gender, "history": []}
     all_users.add(chat_id)
+    save_users(all_users)
     gender_text = "Парень" if gender == "male" else "Девушка"
     emoji = "😊" if gender == "male" else "👩"
 
@@ -319,6 +339,7 @@ def index():
         chat_id = data["message"]["chat"]["id"]
         user_text = data["message"].get("text", "")
         all_users.add(chat_id)
+    save_users(all_users)
 
         if not user_text:
             return "OK", 200
