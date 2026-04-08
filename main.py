@@ -246,6 +246,24 @@ def handle_psychologists(chat_id, index=0):
     )
     send_message(chat_id, text, reply_markup=get_psychologist_keyboard(index))
 
+@app.route("/send_tips", methods=["GET", "POST"])
+def send_tips_endpoint():
+    if not all_users:
+        return "No users", 200
+    tip = random.choice(DAILY_TIPS)
+    count = 0
+    for chat_id in list(all_users):
+        try:
+            send_message(chat_id, f"💡 <b>Совет от Марии:</b>\n\n{tip}")
+            count += 1
+        except:
+            pass
+    return f"Sent to {count} users", 200
+
+@app.route("/ping", methods=["GET"])
+def ping():
+    return "OK", 200
+
 @app.route("/", methods=["POST"])
 def index():
     data = request.get_json(silent=True)
